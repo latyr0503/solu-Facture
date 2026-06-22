@@ -223,9 +223,11 @@ interface TotalsProps {
   totalTVA: number;
   totalTTC: number;
   tauxTVA: number;
+  applyTVA: boolean;
+  onToggleTVA: (apply: boolean) => void;
 }
 
-function TotalsPanel({ totalHT, totalTVA, totalTTC, tauxTVA }: TotalsProps) {
+function TotalsPanel({ totalHT, totalTVA, totalTTC, tauxTVA, applyTVA, onToggleTVA }: TotalsProps) {
   return (
     <div className="ml-auto w-full max-w-sm rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 overflow-hidden">
       <div className="px-5 py-4 space-y-3">
@@ -233,10 +235,31 @@ function TotalsPanel({ totalHT, totalTVA, totalTTC, tauxTVA }: TotalsProps) {
           <span>Total HT</span>
           <span className="font-medium text-slate-900 dark:text-white tabular-nums">{formatMoney(totalHT)} FCFA</span>
         </div>
-        <div className="flex justify-between items-center text-sm text-slate-600 dark:text-slate-400">
-          <span>TVA ({(tauxTVA * 100).toFixed(0)}%)</span>
-          <span className="font-medium text-slate-900 dark:text-white tabular-nums">{formatMoney(totalTVA)} FCFA</span>
+        
+        {/* Toggle TVA */}
+        <div className="flex justify-between items-center text-sm">
+          <label className="flex items-center gap-2 cursor-pointer group">
+            <div className="relative flex items-center">
+              <input 
+                type="checkbox" 
+                className="peer sr-only" 
+                checked={applyTVA}
+                onChange={(e) => onToggleTVA(e.target.checked)}
+              />
+              <div className="w-8 h-4.5 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-sky-500 transition-colors"></div>
+            </div>
+            <span className="text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">
+              Appliquer TVA ({(tauxTVA * 100).toFixed(0)}%)
+            </span>
+          </label>
+          <span className={cn(
+            "font-medium tabular-nums transition-opacity", 
+            applyTVA ? "text-slate-900 dark:text-white" : "text-slate-400 line-through opacity-50"
+          )}>
+            {formatMoney(totalHT * tauxTVA)} FCFA
+          </span>
         </div>
+
         <div className="h-px bg-slate-200 dark:bg-slate-700" />
         <div className="flex justify-between items-center">
           <span className="text-base font-semibold text-slate-900 dark:text-white">Total TTC</span>
@@ -265,6 +288,7 @@ export default function InvoiceForm() {
   const [dateEmission, setDateEmission] = useState<string>(todayISO());
   const [dateEcheance, setDateEcheance] = useState<string>(futureDateISO(30));
   const [docIndex] = useState<number>(1);
+  const [applyTVA, setApplyTVA] = useState<boolean>(true);
 
   // ── Client state ──
   const [client, setClient] = useState<Omit<Client, "id">>({
@@ -288,10 +312,10 @@ export default function InvoiceForm() {
         .reduce((acc, item) => acc + item.quantite * item.prixUnitaireHT, 0)
         .toFixed(2)
     );
-    const totalTVA = parseFloat((totalHT * TAUX_TVA).toFixed(2));
+    const totalTVA = applyTVA ? parseFloat((totalHT * TAUX_TVA).toFixed(2)) : 0;
     const totalTTC = parseFloat((totalHT + totalTVA).toFixed(2));
     return { totalHT, totalTVA, totalTTC };
-  }, [items]);
+  }, [items, applyTVA]);
 
   // ── Auto-generated document number ───────────────────────────
   const numeroDocument = useMemo(
@@ -334,6 +358,7 @@ export default function InvoiceForm() {
       console.log("Document généré :", {
         type: invoiceType,
         statut,
+        applyTVA,
         client: { id: `client-${Date.now()}`, ...client },
         items,
         ...totals,
@@ -553,6 +578,8 @@ export default function InvoiceForm() {
             totalTVA={totals.totalTVA}
             totalTTC={totals.totalTTC}
             tauxTVA={TAUX_TVA}
+            applyTVA={applyTVA}
+            onToggleTVA={setApplyTVA}
           />
         </div>
       </section>
